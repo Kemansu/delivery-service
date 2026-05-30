@@ -5,10 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import ru.don_polesie.back_end.dto.auth.request.JwtAuthRequest;
 import ru.don_polesie.back_end.dto.auth.response.JwtAuthResponse;
 import ru.don_polesie.back_end.dto.auth.request.JwtRefreshRequest;
 import ru.don_polesie.back_end.service.auth.UserAuthService;
@@ -38,9 +36,9 @@ public class UserAuthControllerImpl {
             description = "Аутентификация пользователя и получение JWT токенов (access + refresh)"
     )
     @PostMapping("/login")
-    public ResponseEntity<JwtAuthResponse> checkPassword(@RequestParam String phoneNumber, @RequestParam String password) throws BadAttributeValueExpException {
-        JwtAuthResponse jwtAuthResponse = userAuthService.checkTemporaryPassword(phoneNumber, password);
-        log.info("{} enter to system ", phoneNumber);
+    public ResponseEntity<JwtAuthResponse> checkPassword(@RequestBody JwtAuthRequest jwtAuthRequest) {
+        JwtAuthResponse jwtAuthResponse = userAuthService.checkTemporaryPassword(jwtAuthRequest.getPhoneNumber(), jwtAuthRequest.getPassword());
+        log.info("{} enter to system ", jwtAuthRequest.getPhoneNumber());
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(jwtAuthResponse);

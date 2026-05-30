@@ -21,4 +21,6 @@ public class AddressDtoRequest {
     private Integer apartmentNumber;
 
     private Integer floor;
+
+    private String comment;
 }

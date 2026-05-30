@@ -28,7 +28,7 @@ public class AdminStatService {
 
     public RevenueDtoResponse getDailyRevenue(int year, int month, int day) {
         LocalDate date = LocalDate.of(year, month, day);
-        LocalDateTime startOfDay = date.atStartOfDay(ZoneOffset.of("Europe/Moscow")).toLocalDateTime();
+        LocalDateTime startOfDay = date.atStartOfDay(zone).toLocalDateTime();
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toLocalDateTime();
 
 

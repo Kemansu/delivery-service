@@ -49,7 +49,7 @@ public class SpringSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("https://don-polesie.ru", "http://localhost:63342"));
+        cfg.setAllowedOrigins(List.of("https://don-polesie.ru", "http://localhost:63342", "http://localhost:3000"));
 
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type"));
@@ -85,6 +85,8 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/user/*").permitAll()
+                        .requestMatchers("/api/find/**").permitAll()
+                        .requestMatchers("/api/find/*").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/staff/**").hasAnyRole("WORKER", "ADMIN")
                         .requestMatchers("/api/**").authenticated()

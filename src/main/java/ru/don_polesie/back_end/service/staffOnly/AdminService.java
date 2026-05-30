@@ -2,16 +2,24 @@ package ru.don_polesie.back_end.service.staffOnly;
 
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.support.BeanDefinitionDsl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.don_polesie.back_end.dto.user.UserDto;
 import ru.don_polesie.back_end.exceptions.ObjectNotFoundException;
 import ru.don_polesie.back_end.model.user.User;
+import ru.don_polesie.back_end.model.Role;
+import ru.don_polesie.back_end.repository.RoleRepository;
 import ru.don_polesie.back_end.repository.UserRepository;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,11 +27,12 @@ public class AdminService {
     // Константы для пагинации и ролей
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final String DEFAULT_SORT_FIELD = "id";
-    private static final String WORKER_ROLE_NAME = "WORKER";
-    private static final String USER_ROLE_NAME = "USER";
+    private static final String WORKER_ROLE_NAME = "ROLE_WORKER";
+    private static final String USER_ROLE_NAME = "ROLE_USER";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
 
     /**
      * Получает страницу с пользователями (роль USER)
@@ -56,7 +65,7 @@ public class AdminService {
      *
      * @param id идентификатор пользователя
      */
-
+    @Transactional
     public void deactivatedUser(Long id) {
         User user = userRepository.findById(id).orElse(null);
         if (user != null) {
@@ -67,6 +76,7 @@ public class AdminService {
         throw new ObjectNotFoundException("User not found");
     }
 
+    @Transactional
     public void activatedUser(@Min(0) Long id) {
         User user = userRepository.findById(id).orElse(null);
         if (user != null) {
@@ -82,12 +92,13 @@ public class AdminService {
      *
      * @param userDtoResponse данные пользователя для создания
      */
-
+    @Transactional
     public void createUser(UserDto userDtoResponse) {
         User user = createUserFromDTO(userDtoResponse);
         userRepository.save(user);
     }
 
+    @Transactional
     public void updateUser(UserDto userDtoResponse) {
         User user = createUserFromDTO(userDtoResponse);
         userRepository.save(user);
@@ -119,7 +130,10 @@ public class AdminService {
         dto.surname = user.getSurname();
         dto.email = user.getEmail();
         dto.phoneNumber = user.getPhoneNumber();
-        dto.roles = user.getRoles();
+        dto.roles = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+        dto.isActive = user.isActive();
         return dto;
     }
 
@@ -130,15 +144,35 @@ public class AdminService {
      * @return сущность User с зашифрованным паролем
      */
     private User createUserFromDTO(UserDto userDtoResponse) {
-        String password = userDtoResponse.getPassword();
-        return User.builder()
-                .name(userDtoResponse.getName())
-                .surname(userDtoResponse.getSurname())
-                .email(userDtoResponse.getEmail())
-                .phoneNumber(userDtoResponse.getPhoneNumber())
-                .password(passwordEncoder.encode(password))
-                .roles(userDtoResponse.getRoles())
-                .build();
+        Optional<User> userOptional = userRepository.findById(Long.valueOf(userDtoResponse.getId()));
+        User user = new User();
+        if (userOptional.isPresent()) {
+            user = userOptional.get();
+        }
+        if (userDtoResponse.getName() != null) {
+            user.setName(userDtoResponse.getName());
+        }
+        if (userDtoResponse.getSurname() != null) {
+            user.setSurname(userDtoResponse.getSurname());
+        }
+        if (userDtoResponse.getEmail() != null) {
+            user.setEmail(userDtoResponse.getEmail());
+        }
+        if (userDtoResponse.getPhoneNumber() != null) {
+            user.setPhoneNumber(userDtoResponse.getPhoneNumber());
+        }
+        if (userDtoResponse.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(userDtoResponse.getPassword()));
+        }
+        if (userDtoResponse.getRoles() != null) {
+            user.setRoles(
+                    userDtoResponse.getRoles().stream()
+                            .map(roleName -> roleRepository.findByName(roleName)
+                                    .orElseThrow(() -> new RuntimeException("Role not found: " + roleName)))
+                            .collect(Collectors.toSet())
+            );
+        }
+        return user;
     }
 
 }

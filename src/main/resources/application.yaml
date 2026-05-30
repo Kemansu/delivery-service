@@ -54,4 +54,4 @@ import:
 
 utils:
   page-size: 10
-  min-price-for-delivery: 2000
+  min-price-for-delivery: 3500

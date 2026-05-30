@@ -9,5 +9,12 @@ import java.util.Optional;
 
 public interface CategoryRepository extends CrudRepository<Category, Integer> {
     Optional<Category> findByName(String name);
+
     List<Category> findByActiveTrue();
+
+    List<Category> findByActiveFalse();
+
+    boolean existsCategoryByName(String name);
+
+
 }

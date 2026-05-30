@@ -19,5 +19,6 @@ public class UserDto {
     public String email;
     public String password;
     public String phoneNumber;
-    public Set<Role> roles;
+    public Set<String> roles;
+    public boolean isActive;
 }

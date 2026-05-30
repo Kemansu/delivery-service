@@ -28,7 +28,9 @@ public interface OrderMapper {
                         op.getProduct().getId(),
                         op.getProduct().getName(),
                         op.getQuantity(),
-                        op.getProduct().getPrice())
+                        op.getProduct().getPrice(),
+                        op.getProduct().getImageUrl(),
+                        op.getProduct().getIsWeighted())
                 )
                 .collect(Collectors.toList());
     }

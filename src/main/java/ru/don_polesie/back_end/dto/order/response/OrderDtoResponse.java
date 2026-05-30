@@ -32,15 +32,12 @@ public class OrderDtoResponse {
         private String productName;
         private Integer quantity;
         private BigDecimal price;
+        private String imageUrl;
+        private boolean isWeighted;
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (OrderItemDto item : items) {
-            sb.append(item.toString());
-            sb.append("\n");
-        }
         return "OrderDtoResponse{" +
                 "id=" + id +
                 ", phoneNumber='" + phoneNumber + '\'' +
@@ -48,7 +45,7 @@ public class OrderDtoResponse {
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", status=" + status +
-                ", items: " + sb +
+                ", items=" + items +
                 '}';
     }
 }

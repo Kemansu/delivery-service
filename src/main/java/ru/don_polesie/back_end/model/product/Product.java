@@ -12,6 +12,7 @@ import org.hibernate.validator.constraints.URL;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -32,6 +33,8 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    private UUID uuid;
 
     @Column(unique = true, nullable = false, length = 200)
     @NotBlank(message = "Название товара обязательно")
@@ -123,9 +126,25 @@ public class Product {
     @Size(max = 100, message = "Страна происхождения не может превышать 100 символов")
     private String countryOfOrigin;
 
-    @Column
+    @Column(name = "composition", nullable = false, columnDefinition = "TEXT")
+    @NotBlank(message = "Состав обязателен")
+    @Size(max = 2000, message = "Состав не может превышать 2000 символов")
+    private String composition;
+
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    @NotBlank(message = "Описание обязательно")
+    @Size(max = 5000, message = "Описание не может превышать 5000 символов")
+    private String description;
+
+    @Column(name = "shelf_life", nullable = false, length = 100)
+    @NotBlank(message = "Срок хранения обязателен")
+    @Size(max = 100, message = "Срок хранения не может превышать 100 символов")
+    private String shelfLife;
+
+    @Column(nullable = false)
     @Min(0)
     @Max(100)
+    @NotNull(message = "Размер скидки в процентах")
     private Integer sale = 0;
 
     @Column(nullable = false)

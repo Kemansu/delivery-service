@@ -27,7 +27,7 @@ public class OrderInfoController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderDtoResponse> findById(@PathVariable @Min(1) Long id) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(workOrderService.findById(id));
     }
 
@@ -39,7 +39,7 @@ public class OrderInfoController {
     public ResponseEntity<OrderDtoResponse> assembly() {
         User user = securityUtils.getCurrentUser();
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(workOrderService.findAssemblyOrderForEmployee(user));
     }
 
@@ -51,7 +51,7 @@ public class OrderInfoController {
     public ResponseEntity<Page<OrderDtoResponse>> findOrdersPage(@RequestParam @Min(0) Integer pageNumber) {
         Page<OrderDtoResponse> ordersPage = workOrderService.findOrdersPage(pageNumber);
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(ordersPage);
     }
 
@@ -64,7 +64,7 @@ public class OrderInfoController {
         OrderStatus orderStatus = OrderStatus.valueOf(status);
         Page<OrderDtoResponse> ordersPage = workOrderService.findOrdersPageWithStatus(pageNumber, orderStatus);
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(ordersPage);
     }
 }

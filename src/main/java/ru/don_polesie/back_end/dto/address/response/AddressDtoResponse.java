@@ -17,9 +17,11 @@ public class AddressDtoResponse {
     @NotBlank
     private String street;
     @NotNull
-    private Integer houseNumber;
+    private String houseNumber;
 
     private Integer apartmentNumber;
 
     private Integer floor;
+
+    private String comment;
 }

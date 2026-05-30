@@ -35,7 +35,7 @@ public class UserInfoOrderController {
         String phoneNumber = securityUtils.getCurrentPhoneNumber();
         Page<OrderDtoResponse> ordersPage = orderService.findUserOrdersPage(pageNumber, phoneNumber);
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(ordersPage);
     }
 
@@ -47,7 +47,7 @@ public class UserInfoOrderController {
     public ResponseEntity<Page<OrderDtoResponse>> findShippedUserOrdersPage(@RequestParam @Min(value = 0) Integer pageNumber) {
         String phoneNumber = securityUtils.getCurrentPhoneNumber();
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(orderService.findShippedUserOrdersPage(pageNumber, phoneNumber));
     }
 
@@ -62,7 +62,7 @@ public class UserInfoOrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderDtoResponse> findById(@PathVariable @Min(value = 1) Long id) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(orderService.findById(id));
     }
 }

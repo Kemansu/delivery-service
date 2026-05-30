@@ -52,7 +52,7 @@ public class ManageProductService {
      * Обновляет данные товара
      *
      * @param productDtoFull новые данные товара
-     * @param id идентификатор обновляемого товара
+     * @param id             идентификатор обновляемого товара
      * @return обновленный DTO товара
      * @throws ObjectNotFoundException если товар не найден
      */
@@ -81,22 +81,26 @@ public class ManageProductService {
         productRepository.deleteById(id);
     }
 
+    @Transactional
     public void deactivateById(@Min(value = 1) Long id) {
         Optional<Product> productOptional = productRepository.findById(id);
         if (productOptional.isEmpty()) {
             throw new ObjectNotFoundException("Product not found with id: " + id);
         }
-        productOptional.get().setActive(false);
-        productRepository.save(productOptional.get());
+        Product product = productOptional.get();
+        product.setActive(false);
+        productRepository.save(product);
     }
 
+    @Transactional
     public void activateById(@Min(value = 1) Long id) {
         Optional<Product> productOptional = productRepository.findById(id);
         if (productOptional.isEmpty()) {
             throw new ObjectNotFoundException("Product not found with id: " + id);
         }
-        productOptional.get().setActive(true);
-        productRepository.save(productOptional.get());
+        Product product = productOptional.get();
+        product.setActive(true);
+        productRepository.save(product);
     }
 
 
@@ -130,7 +134,7 @@ public class ManageProductService {
     /**
      * Обновляет поля товара из DTO
      *
-     * @param product сущность товара для обновления
+     * @param product        сущность товара для обновления
      * @param productDtoFull DTO с новыми значениями полей
      */
     private void updateProductFromDto(Product product, ProductDtoFull productDtoFull) {
@@ -147,5 +151,20 @@ public class ManageProductService {
         product.setStorageTemperatureMin(productDtoFull.getStorageTemperatureMin());
         product.setStorageTemperatureMax(productDtoFull.getStorageTemperatureMax());
         product.setCountryOfOrigin(productDtoFull.getCountryOfOrigin());
+
+        product.setAmount(productDtoFull.getAmount());
+        product.setDescription(productDtoFull.getDescription());
+        product.setSale(productDtoFull.getSale());
+        product.setIsWeighted(productDtoFull.getIsWeighted());
+
+        product.setShelfLife(productDtoFull.getShelfLife());
+        if (categoryService.findByName(productDtoFull.getCategory()) == null) {
+            throw new ObjectNotFoundException("Category not found with name: " + productDtoFull.getCategory());
+        }
+        product.setCategory(categoryService.findByName(productDtoFull.getCategory()));
+        if (brandService.findByName(productDtoFull.getBrand()) == null) {
+            throw new ObjectNotFoundException("Brand not found with name: " + productDtoFull.getCategory());
+        }
+        product.setBrand(product.getBrand());
     }
 }

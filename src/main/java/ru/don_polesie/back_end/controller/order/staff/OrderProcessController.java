@@ -38,6 +38,18 @@ public class OrderProcessController {
     }
 
     @Operation(
+            summary = "Отменить заказ",
+            description = "С заказом что-то не так - сотрудник отменяет его"
+    )
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancel(@PathVariable @Min(value = 1) Long id) {
+        User user = securityUtils.getCurrentUser();
+        workOrderService.cancelOrder(id, user);
+        log.info("{} cancel order {}", user.getPhoneNumber(), id);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(
             summary = "Обработать заказ",
             description = "Обновление весов и статуса заказа в процессе сборки"
     )

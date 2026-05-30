@@ -42,6 +42,8 @@ public class BasketController {
                     var product = productMapper.productDtoRRtoProduct(productRR);
                     orderItemDto.setPrice(product.getPrice());
                     orderItemDto.setProductName(product.getName());
+                    orderItemDto.setSale(product.getSale());
+                    orderItemDto.setImageUrl(product.getImageUrl());
                     dto.setTotalPrice(dto.getTotalPrice().add(priceService.calculateProductCost(product, orderItemDto.getQuantity())));
                 }
         );

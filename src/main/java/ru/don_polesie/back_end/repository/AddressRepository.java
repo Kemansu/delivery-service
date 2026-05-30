@@ -18,4 +18,8 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
     void deactivateById(@Param("id") Long id, @Param("user") User user);
 
     boolean existsByIdAndUser(Long id, User user);
+
+    @Modifying
+    @Query("UPDATE Address a SET a.comment = :comment WHERE a.id = :id AND a.user = :user")
+    void updateComment(@Param("id") Long id, @Param("comment") String comment, @Param("user") User user);
 }

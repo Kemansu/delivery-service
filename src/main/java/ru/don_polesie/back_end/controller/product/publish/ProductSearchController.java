@@ -5,24 +5,29 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.don_polesie.back_end.dto.SingleStringArg;
+import ru.don_polesie.back_end.dto.order.response.PopularProductDtoResponse;
 import ru.don_polesie.back_end.dto.product.ProductDtoFull;
 import ru.don_polesie.back_end.dto.product.request.ProductDtoSearchRequest;
 import ru.don_polesie.back_end.model.product.Brand;
 import ru.don_polesie.back_end.model.product.Category;
 import ru.don_polesie.back_end.service.product.SearchProductService;
 
+import java.util.List;
+
 
 @Tag(
         name = "Каталог товаров",
         description = "Публичный API для поиска и просмотра товаров"
 )
-@RequestMapping("/api/product/find")
+@RequestMapping("/api/find/product/")
 @RestController
 @RequiredArgsConstructor
 public class ProductSearchController {
@@ -39,7 +44,7 @@ public class ProductSearchController {
     @GetMapping
     public ResponseEntity<Page<ProductDtoFull>> findProductsPage(@RequestParam @Min(value = 0) Integer pageNumber) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findProductsActivatedPage(pageNumber));
     }
 
@@ -54,7 +59,7 @@ public class ProductSearchController {
     @GetMapping("/deactivated")
     public ResponseEntity<Page<ProductDtoFull>> findDeactivatedProductsPage(@RequestParam @Min(value = 0) Integer pageNumber) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findProductsDeactivatedPage(pageNumber));
     }
 
@@ -68,7 +73,7 @@ public class ProductSearchController {
     @GetMapping("/sale")
     public ResponseEntity<Page<ProductDtoFull>> findProductsPageWithSale(@RequestParam @Min(value = 0) Integer pageNumber) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findProductsPageWithSale(pageNumber));
     }
 
@@ -83,7 +88,7 @@ public class ProductSearchController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductDtoFull> findById(@PathVariable @Min(value = 1) Long id) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findById(id));
     }
 
@@ -96,19 +101,17 @@ public class ProductSearchController {
             @ApiResponse(responseCode = "400", description = "Неверные параметры фильтрации")
     })
     @GetMapping("/by-params")
-    public ResponseEntity<Page<ProductDtoFull>> findAllByParams(@RequestParam(required = false) Long id,
-                                                                @RequestParam(required = false) String brand,
+    public ResponseEntity<Page<ProductDtoFull>> findAllByParams(@RequestParam(required = false) String brand,
                                                                 @RequestParam(required = false) String name,
                                                                 @RequestParam(required = false) Integer pageNumber) {
         ProductDtoSearchRequest productDtoSearch = ProductDtoSearchRequest
                 .builder()
-                .id(id)
                 .brand(brand)
                 .name(name)
                 .build();
 
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findAllByParams(productDtoSearch, pageNumber));
     }
 
@@ -120,28 +123,41 @@ public class ProductSearchController {
             @ApiResponse(responseCode = "200", description = "Поиск выполнен успешно"),
             @ApiResponse(responseCode = "400", description = "Пустой или неверный поисковый запрос")
     })
-    @GetMapping("/by-query")
+    @PostMapping("/by-query")
     public ResponseEntity<Page<ProductDtoFull>> findProductsByQuery(@RequestParam String query,
                                                                     @RequestParam Integer pageNumber) {
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(searchProductService.findProductByQuery(query, pageNumber));
     }
 
+    @Operation(
+            summary = "Товары по популярности"
+    )
+    @GetMapping("/most-popular-products")
+    public ResponseEntity<Page<ProductDtoFull>> mostPopularProducts(@RequestParam @Min(2025) int year,
+                                                                               @RequestParam @Min(1) @Max(12) int month,
+                                                                               @RequestParam int pageNumber) {
+        Page<ProductDtoFull> products = searchProductService.getMostPopularProducts(year, month, pageNumber);
+        if (products.isEmpty()) {
+            products = searchProductService.findProductsActivatedPage(pageNumber);
+        }
+        return ResponseEntity.ok(products);
+    }
+
     @GetMapping("/by-category")
-    public ResponseEntity<Page<ProductDtoFull>> findProductByCategory(@RequestParam String categoryName,
+    public ResponseEntity<Page<ProductDtoFull>> findProductByCategory(@RequestParam Long id,
                                                                       @RequestParam Integer pageNumber){
         return ResponseEntity
-                .status(HttpStatus.FOUND)
-                .body(searchProductService.findProductsByCategory(pageNumber, new Category(categoryName)));
+                .status(HttpStatus.OK)
+                .body(searchProductService.findProductsByCategory(pageNumber, id));
     }
 
     @GetMapping("/by-brand")
-    public ResponseEntity<Page<ProductDtoFull>> findProductByBrand(@RequestParam String brandName,
+    public ResponseEntity<Page<ProductDtoFull>> findProductByBrand(@RequestParam Long id,
                                                                       @RequestParam Integer pageNumber){
         return ResponseEntity
-                .status(HttpStatus.FOUND)
-                .body(searchProductService.findProductsByBrand(pageNumber, new Brand(brandName)));
+                .status(HttpStatus.OK)
+                .body(searchProductService.findProductsByBrand(pageNumber, id));
     }
-
 }

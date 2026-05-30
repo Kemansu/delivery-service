@@ -7,11 +7,15 @@ import ru.don_polesie.back_end.model.product.Brand;
 import ru.don_polesie.back_end.model.product.Category;
 import ru.don_polesie.back_end.model.product.Product;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring",
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ProductMapper {
 
-    @Mapping(source = "brand", target = "brand")
-    @Mapping(source = "category", target = "category")
+    @Mapping(source = "brand.name", target = "brand")
+    @Mapping(source = "brand.id", target = "brandId")
+    @Mapping(source = "category.name", target = "category")
+    @Mapping(source = "category.id", target = "categoryId")
     ProductDtoFull toProductDtoRR(Product product);
 
     @Mapping(target = "id", ignore = true)

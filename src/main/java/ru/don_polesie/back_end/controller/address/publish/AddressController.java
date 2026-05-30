@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.don_polesie.back_end.dto.address.request.AddressDtoRequest;
 import ru.don_polesie.back_end.dto.address.response.AddressDtoResponse;
+import ru.don_polesie.back_end.model.user.User;
 import ru.don_polesie.back_end.security.SecurityUtils;
 import ru.don_polesie.back_end.service.userOnly.UserAddressService;
 
@@ -36,7 +37,7 @@ public class AddressController {
     public ResponseEntity<List<AddressDtoResponse>> findAll() {
         var user = securityUtils.getCurrentUser();
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(userAddressService.getUserAddresses(user));
     }
 
@@ -48,19 +49,34 @@ public class AddressController {
     public ResponseEntity<String> createUserAddress(@RequestBody AddressDtoRequest address) {
         var user = securityUtils.getCurrentUser();
         log.info("User {} created Address {}", user.getPhoneNumber(), address.toString());
+        userAddressService.save(address, user);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(userAddressService.save(address, user));
+                .build();
+    }
+
+    @Operation(
+            summary = "Обновить комментарий к адресу",
+            description = "Обновляет комментарий к адресу доставки"
+    )
+    @PostMapping("/comment")
+    public ResponseEntity<String> updateCommentForAddress(@RequestParam Long id, @RequestParam String comment) {
+        var user = securityUtils.getCurrentUser();
+        userAddressService.updateComment(id, comment, user);
+        log.info("User {} updated comment {}", user.getPhoneNumber(), comment);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .build();
     }
 
     @Operation(
             summary = "Делает адрес доставки неактивным",
             description = "Адрес доставки по идентификатору больше не будет виден пользователю"
     )
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUserAddress(@PathVariable @Min(0) Long id) {
+    @PutMapping("deactivate/{id}")
+    public ResponseEntity<Void> deactivateUserAddress(@PathVariable @Min(0) Long id) {
         var user = securityUtils.getCurrentUser();
-        userAddressService.delete(id, user);
+        userAddressService.deactivate(id, user);
         log.info("User {} deactivated Address {}", user.getPhoneNumber(), id);
         return ResponseEntity
                 .status(HttpStatus.NO_CONTENT)

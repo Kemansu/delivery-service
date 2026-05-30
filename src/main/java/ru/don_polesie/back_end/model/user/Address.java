@@ -49,9 +49,9 @@ public class Address {
 
     @Column(name = "house_number", nullable = false)
     @NotNull(message = "Номер дома обязателен")
-    @Min(value = HOUSE_NUMBER_MIN, message = "Номер дома должен быть не менее {value}")
-    @Max(value = HOUSE_NUMBER_MAX, message = "Номер дома не может превышать {value}")
-    private Integer  houseNumber;
+    // @Min(value = HOUSE_NUMBER_MIN, message = "Номер дома должен быть не менее {value}")
+    // @Max(value = HOUSE_NUMBER_MAX, message = "Номер дома не может превышать {value}")
+    private String houseNumber;
 
     @Column(name = "apartment_number")
     @Min(value = APARTMENT_MIN, message = "Номер квартиры должен быть не менее {value}")
@@ -62,6 +62,10 @@ public class Address {
     @Min(value = FLOOR_MIN, message = "Этаж не может быть меньше {value}")
     @Max(value = FLOOR_MAX, message = "Этаж не может быть больше {value}")
     private Integer  floor;
+
+    @Column(name = "comment")
+    private String comment;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

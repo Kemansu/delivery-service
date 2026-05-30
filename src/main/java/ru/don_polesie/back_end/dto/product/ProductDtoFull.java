@@ -14,6 +14,8 @@ public class ProductDtoFull {
     @Size(max = 255, message = "Бренд должен содержать не более 255 символов")
     private String brand;
 
+    private int brandId;
+
     @NotBlank(message = "Имя не должно быть пустым")
     @Size(max = 255, message = "Имя должно содержать не более 255 символов")
     private String name;
@@ -21,6 +23,8 @@ public class ProductDtoFull {
     @NotBlank(message = "Категория не должна быть пустой")
     @Size(max = 255, message = "Категория должна содержать не более 255 символов")
     private String category;
+
+    private int categoryId;
 
     @NotBlank(message = "Фото не должно быть пустым")
     private String imageUrl;
@@ -61,6 +65,15 @@ public class ProductDtoFull {
 
     private Boolean isWeighted;
 
+    @NotNull(message = "Состав товара обязателно")
+    private String composition;
+
+    @NotNull(message = "Описание товара обязателно")
+    private String description;
+
+    @NotNull(message = "Срок хранения товара обязателно")
+    private String shelfLife;
+
     @NotNull(message = "Максимальная температура хранения обязательна")
     @AssertTrue(message = "Максимальная температура должна быть больше или равна минимальной")
     private boolean isValidTemperatureRange() {
@@ -75,5 +88,6 @@ public class ProductDtoFull {
     @NotBlank(message = "Страна-производитель обязательна")
     private String countryOfOrigin;
 
+    @NotNull(message = "Размер скидки в процентах обязателен")
     private Integer sale;
 }

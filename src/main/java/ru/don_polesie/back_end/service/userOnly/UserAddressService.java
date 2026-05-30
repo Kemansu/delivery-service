@@ -1,5 +1,7 @@
 package ru.don_polesie.back_end.service.userOnly;
 
+import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.don_polesie.back_end.dto.address.request.AddressDtoRequest;
@@ -35,21 +37,21 @@ public class UserAddressService {
      * Сохраняет новый адрес для пользователя
      *
      * @param addressDTO данные адреса для сохранения
-     * @param user пользователь, для которого сохраняется адрес
+     * @param user       пользователь, для которого сохраняется адрес
      * @return строковое представление сохраненного адреса
      */
-
-    public String save(AddressDtoRequest addressDTO, User user) {
+    @Transactional
+    public void save(AddressDtoRequest addressDTO, User user) {
         Address address = addressMapper.toEntityFromAddressDtoRequest(addressDTO);
         address.setUser(user);
+        address.setActive(true);
         addressRepository.save(address);
-        return address.toString();
     }
 
     /**
      * Удаляет адрес пользователя по идентификатору
      *
-     * @param id идентификатор адреса для удаления
+     * @param id   идентификатор адреса для удаления
      * @param user пользователь, для проверки прав доступа
      * @throws IllegalArgumentException если адрес с указанным id не найден
      */
@@ -59,5 +61,18 @@ public class UserAddressService {
             throw new IllegalArgumentException(String.format("Address %n not found.", id));
         }
         addressRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void deactivate(@Min(0) Long id, User user) {
+        if (!addressRepository.existsById(id)) {
+            throw new IllegalArgumentException(String.format("Address %n not found.", id));
+        }
+        addressRepository.deactivateById(id, user);
+    }
+
+    @Transactional
+    public void updateComment(Long id, String comment, User user) {
+        addressRepository.updateComment(id, comment, user);
     }
 }

@@ -13,7 +13,6 @@ import ru.don_polesie.back_end.dto.user.UserDto;
 import ru.don_polesie.back_end.security.SecurityUtils;
 import ru.don_polesie.back_end.service.staffOnly.AdminService;
 
-import static java.rmi.server.LogStream.log;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,7 +35,7 @@ public class AdminUserManageController {
     public ResponseEntity<Page<UserDto>> findUsersPage(@RequestParam @Min(0) Integer pageNumber) {
         Page<UserDto> usersPage = adminService.findUsersPage(pageNumber);
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(usersPage);
     }
 
@@ -48,7 +47,7 @@ public class AdminUserManageController {
     public ResponseEntity<Page<UserDto>> findWorkersPage(@RequestParam @Min(0) Integer pageNumber) {
         Page<UserDto> workersPage = adminService.findWorkersPage(pageNumber);
         return ResponseEntity
-                .status(HttpStatus.FOUND)
+                .status(HttpStatus.OK)
                 .body(workersPage);
     }
 
@@ -73,9 +72,10 @@ public class AdminUserManageController {
     )
     @PostMapping("/user/update")
     public ResponseEntity<Void> updateUser(@RequestBody UserDto userDto) {
-        adminService.createUser(userDto);
+        adminService.updateUser(userDto);
 
         var user = securityUtils.getCurrentUser();
+
         log.info("User {} updated user {}", user.getPhoneNumber(), userDto.toString());
         return ResponseEntity
                 .status(HttpStatus.OK)

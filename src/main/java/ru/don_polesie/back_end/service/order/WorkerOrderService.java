@@ -58,7 +58,7 @@ public class WorkerOrderService {
      */
 
     public Page<OrderDtoResponse> findOrdersPage(Integer pageNumber) {
-        var pageable = PageRequest.of(pageNumber - 1, PAGE_SIZE, Sort.by("id").descending());
+        var pageable = PageRequest.of(pageNumber, PAGE_SIZE, Sort.by("id").descending());
         return orderRepository.findAll(pageable)
                 .map(orderMapper::toOrderDtoResponse);
     }
@@ -93,6 +93,21 @@ public class WorkerOrderService {
         orderRepository.save(order);
     }
 
+    @Transactional
+    public void cancelOrder(@Min(value = 1) Long id, User user) {
+        Optional<Order> orderOptional = orderRepository.findById(id);
+        if (!orderOptional.isPresent()) {
+            throw new IllegalArgumentException("Заказа с таким id не существует");
+        }
+        Order order = orderOptional.get();
+        if (!order.getStatus().equals(OrderStatus.MONEY_RESERVAITED)) {
+            throw new IllegalArgumentException("Заказа еще не прошел оплату, его невозможно отменить");
+        }
+        order.setEmployee(user);
+        order.setStatus(OrderStatus.CANCELED);
+        orderRepository.save(order);
+    }
+
     /**
      * Обрабатывает заказ: обновляет веса товаров и пересчитывает стоимость
      *
@@ -115,6 +130,7 @@ public class WorkerOrderService {
         orderRepository.save(order);
     }
 
+    @Transactional
     public void takeOrder(@Min(value = 1) Long id, User user) {
         Optional<Order> orderOptional = orderRepository.findOrderByStatusAndEmployee(OrderStatus.ON_ASSEMBLY, user);
         if (orderOptional.isPresent()) {
@@ -283,5 +299,4 @@ public class WorkerOrderService {
             order.setStatus(OrderStatus.ERROR_ON_PAYMENT);
         }
     }
-
 }

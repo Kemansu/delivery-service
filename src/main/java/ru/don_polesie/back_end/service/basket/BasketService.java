@@ -12,9 +12,11 @@ import ru.don_polesie.back_end.model.product.Product;
 import ru.don_polesie.back_end.repository.BasketProductRepository;
 import ru.don_polesie.back_end.repository.BasketRepository;
 import ru.don_polesie.back_end.repository.ProductRepository;
+import ru.don_polesie.back_end.repository.UserRepository;
 import ru.don_polesie.back_end.service.system.PriceService;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -26,6 +28,7 @@ public class BasketService {
     private final BasketProductRepository basketProductRepository;
     private final PriceService priceService;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
 
     public Basket getBasket(String phoneNumber) {
         return getBasketByUserPhoneNumber(phoneNumber);
@@ -106,9 +109,13 @@ public class BasketService {
     // ===================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====================
 
     private Basket getBasketByUserPhoneNumber(String phoneNumber) {
-        return basketRepository.findByUser_PhoneNumber(phoneNumber)
-                .orElseThrow(() ->
-                        new ObjectNotFoundException("Basket not found with user phone number: " + phoneNumber));
+        Optional<Basket> userBasket = basketRepository.findByUser_PhoneNumber(phoneNumber);
+        if (userBasket.isEmpty()) {
+            Basket basket = new Basket();
+            basket.setUser(userRepository.findByPhoneNumber(phoneNumber).get());
+            return basketRepository.save(basket);
+        }
+        return userBasket.get();
     }
 
     private Product getProductById(Long productId) {

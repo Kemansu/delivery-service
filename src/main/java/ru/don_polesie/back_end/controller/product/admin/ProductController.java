@@ -1,4 +1,4 @@
-package ru.don_polesie.back_end.controller.admin;
+package ru.don_polesie.back_end.controller.product.admin;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -17,7 +17,7 @@ import ru.don_polesie.back_end.service.product.ManageProductService;
 @RequestMapping("/api/admin/product")
 @RequiredArgsConstructor
 @Log4j2
-public class AdminProductManageController {
+public class ProductController {
 
     private final ManageProductService productServiceImpl;
     private final SecurityUtils securityUtils;

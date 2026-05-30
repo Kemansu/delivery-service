@@ -3,7 +3,10 @@ package ru.don_polesie.back_end.utils;
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 
 @Slf4j
@@ -42,7 +45,7 @@ public class SmsSenderHttpClient {
             log.info("SMS request sending - PhoneNumber: {}, Text: {}",
                     recipientNumber, text);
 
-            /*
+
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.exolve.ru/messaging/v1/SendSMS"))
                     .header("Authorization", authHeader)
@@ -59,7 +62,7 @@ public class SmsSenderHttpClient {
             if (response.statusCode() != 200) {
                 throw new RuntimeException("API returned error: " + response.body());
             }
-             */
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to send SMS", e);
         }

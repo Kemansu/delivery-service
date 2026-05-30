@@ -8,7 +8,6 @@ import lombok.Setter;
 @Setter
 @Builder
 public class ProductDtoSearchRequest {
-    private Long id;
     private String brand;
     private String name;
 }

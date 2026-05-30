@@ -12,4 +12,6 @@ public interface BrandRepository extends CrudRepository<Brand, Integer> {
     Optional<Brand> findByName(String name);
 
     List<Brand> findByActiveTrue();
+
+    List<Brand> findByActiveFalse();
 }

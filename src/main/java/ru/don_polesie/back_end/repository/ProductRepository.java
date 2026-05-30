@@ -33,13 +33,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findAllBySaleGreaterThan(int i, Pageable pageable);
 
     @Query("SELECT p FROM Product p " +
-            "WHERE (:brand IS NULL OR (LOWER(p.brand) LIKE CONCAT('%', LOWER(CAST(:brand AS string)), '%')))" +
-            "AND (:id IS NULL OR p.id = :id)" +
+            "WHERE (:brand IS NULL OR (LOWER(p.brand.name) LIKE CONCAT('%', LOWER(CAST(:brand AS string)), '%')))" +
             "AND  (:name IS NULL OR (LOWER(p.name) LIKE CONCAT('%', LOWER(CAST(:name AS string)), '%')))" +
             "ORDER BY p.id"
     )
     Page<Product> findProductsByParams(
-            @Param("id") Long id,
             @Param("brand") String brand,
             @Param("name") String name,
             Pageable pageable
@@ -47,9 +45,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 
     @Query("SELECT p FROM Product p WHERE " +
-            "CAST(p.id AS string) LIKE CONCAT('%', :query, '%') OR " +
-            "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-            "LOWER(p.brand) LIKE LOWER(CONCAT('%', :query, '%'))")
+            "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))" +
+            "AND p.active = true")
     Page<Product> searchProductsByQuery(@Param("query") String query, Pageable pageable);
 
     Optional<Product> findByBrandAndName(Brand brand, String name);
@@ -61,4 +58,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findPByActive(boolean b, Pageable pageable);
 
     Page<Product> findAllByAmountGreaterThanAndActive(int i, boolean b, Pageable pageable);
+
+    Page<Product> findPByCategoryIdAndActiveTrue(Long category_id, Pageable pageable);
+
+    Page<Product> findByBrandIdAndActiveTrue(Long id, Pageable pageable);
 }

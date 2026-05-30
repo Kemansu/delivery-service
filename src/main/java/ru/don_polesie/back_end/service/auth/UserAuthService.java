@@ -1,10 +1,13 @@
 package ru.don_polesie.back_end.service.auth;
 
 import lombok.AllArgsConstructor;
+import org.apache.coyote.BadRequestException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.don_polesie.back_end.dto.auth.response.JwtAuthResponse;
+import ru.don_polesie.back_end.exceptions.AccessDeniedException;
 import ru.don_polesie.back_end.exceptions.RequestValidationException;
 import ru.don_polesie.back_end.model.Role;
 import ru.don_polesie.back_end.model.user.User;
@@ -38,9 +41,14 @@ public class UserAuthService {
      * Отправка временного пароля
      */
     public void sendTemporaryPassword(String number) {
-        if (!userRepository.existsByPhoneNumberAndActiveTrue(number)) {
-            throw new RequestValidationException("Вы были заблокированы, обратитесь в службу поддержки для решения вопроса");
+
+        if (userRepository.findByPhoneNumber(number).isPresent()) {
+            if (!userRepository.existsByPhoneNumberAndActiveTrue(number)) {
+                throw new RequestValidationException("Вы были заблокированы, обратитесь в службу поддержки для решения вопроса");
+            }
         }
+
+
 
         if (!PhoneNumberValidator.isValidRussianPhone(number)) {
             throw new RequestValidationException("Некорректный номер телефона");
@@ -54,13 +62,17 @@ public class UserAuthService {
     /**
      * Проверка временного пароля
      */
-    public JwtAuthResponse checkTemporaryPassword(String number, String code) throws BadAttributeValueExpException {
+    public JwtAuthResponse checkTemporaryPassword(String number, String code)  {
         if (!PhoneNumberValidator.isValidRussianPhone(number)) {
             throw new RequestValidationException("Некорректный номер телефона");
         }
 
         CodeEntry entry = codes.get(number);
-        if (entry != null && entry.code.equals(code) && System.currentTimeMillis() < entry.expireAt) {
+        if (entry == null) {
+            throw new RequestValidationException("Некорректный номер телефона");
+        }
+
+        if (entry.code.equals(code) && System.currentTimeMillis() < entry.expireAt) {
             // Если номера нет в бд - сохраняем нового пользователя
             Optional<User> userOptional = userRepository.findByPhoneNumber(number);
             if (userOptional.isEmpty()) {
@@ -73,8 +85,7 @@ public class UserAuthService {
             codes.remove(number);
             return jwtGeneratorService.generateJWT(number, code); // пример, подставь свою реализацию
         }
-
-        throw new RequestValidationException("Некорректный номер телефона");
+        throw new BadCredentialsException("Некорректный пароль.");
     }
 
     /**
