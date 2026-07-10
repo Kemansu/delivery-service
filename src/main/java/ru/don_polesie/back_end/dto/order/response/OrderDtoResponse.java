@@ -21,6 +21,7 @@ public class OrderDtoResponse {
     private LocalDateTime  createdAt;
     private LocalDateTime updatedAt;
     private OrderStatus status;
+    private Boolean needCallForApproval;
     private List<OrderItemDto> items;
 
     @Data
@@ -45,6 +46,7 @@ public class OrderDtoResponse {
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 ", status=" + status +
+                ", needCallForApproval=" + needCallForApproval +
                 ", items=" + items +
                 '}';
     }

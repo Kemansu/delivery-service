@@ -5,8 +5,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,9 +40,9 @@ public class UserManipulationOrderController {
             @ApiResponse(responseCode = "404", description = "Товар или адрес не найден")
     })
     @PostMapping
-    public ResponseEntity<OrderCreatedDtoResponse> save(@RequestParam @Min(value = 1) Long addressId) {
+    public ResponseEntity<OrderCreatedDtoResponse> save(@RequestParam @Min(value = 1) Long addressId, @RequestParam(defaultValue = "false") Boolean needCallForApproval) {
         User user = securityUtils.getCurrentUser();
-        var resp = orderServiceImpl.save(user, addressId);
+        var resp = orderServiceImpl.save(user, addressId, needCallForApproval);
         log.info("{} created order: {}", user.getPhoneNumber(), resp.toString());
         return ResponseEntity
                 .status(HttpStatus.CREATED)

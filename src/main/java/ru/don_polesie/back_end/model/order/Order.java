@@ -74,6 +74,10 @@ public class Order {
     @JoinColumn(name = "employee_id") // Указано имя колонки
     private User employee;
 
+    @Setter
+    @Column(nullable = false)
+    private Boolean needCallForApproval = false;
+
     public Order() {}
 
     public void addProduct(OrderProduct op) {

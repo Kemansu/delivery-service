@@ -117,7 +117,7 @@ public class UserOrderService {
      * @throws RuntimeException если не удалось создать платеж
      */
     @Transactional
-    public OrderCreatedDtoResponse save(User user, Long addressId) {
+    public OrderCreatedDtoResponse save(User user, Long addressId, Boolean needCallForApproval) {
         Optional<Address> address = addressRepository.findById(addressId);
         if (address.isEmpty()) {
             throw new ObjectNotFoundException("Address not found with id: " + addressId);
@@ -139,6 +139,7 @@ public class UserOrderService {
         order.setAddress(address.get());
         order.setStatus(OrderStatus.PAYING);
         order.setPhoneNumber(order.getUser().getPhoneNumber());
+        order.setNeedCallForApproval(needCallForApproval);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
 
