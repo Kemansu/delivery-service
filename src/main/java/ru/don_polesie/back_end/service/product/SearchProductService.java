@@ -2,9 +2,7 @@ package ru.don_polesie.back_end.service.product;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.ILoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -141,7 +139,7 @@ public class SearchProductService {
         return PageRequest.of(pageNumber, PAGE_SIZE, Sort.by("id").descending());
     }
 
-    private ZoneId zone = ZoneId.of("Europe/Moscow");
+    private static final ZoneId zone = ZoneId.of("Europe/Moscow");
     public Page<ProductDtoFull> getMostPopularProducts(
             @Min(2025) int year,
             @Min(1) @Max(12) int month,

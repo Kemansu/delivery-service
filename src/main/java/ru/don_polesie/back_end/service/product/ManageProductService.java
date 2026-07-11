@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.don_polesie.back_end.dto.product.ProductDtoFull;
 import ru.don_polesie.back_end.exceptions.ObjectNotFoundException;
 import ru.don_polesie.back_end.mapper.ProductMapper;
+import ru.don_polesie.back_end.model.product.Brand;
+import ru.don_polesie.back_end.model.product.Category;
 import ru.don_polesie.back_end.model.product.Product;
 import ru.don_polesie.back_end.repository.ProductRepository;
 
@@ -60,7 +62,6 @@ public class ManageProductService {
     @Transactional
     public ProductDtoFull update(ProductDtoFull productDtoFull, @Min(value = 0) Long id) {
         Product existingProduct = getProductById(id);
-        checkBrandAndCategory(existingProduct);
         updateProductFromDto(existingProduct, productDtoFull);
         Product savedProduct = productRepository.save(existingProduct);
         return productMapper.toProductDtoRR(savedProduct);
@@ -158,13 +159,17 @@ public class ManageProductService {
         product.setIsWeighted(productDtoFull.getIsWeighted());
 
         product.setShelfLife(productDtoFull.getShelfLife());
-        if (categoryService.findByName(productDtoFull.getCategory()) == null) {
+
+        Category category = categoryService.findByName(productDtoFull.getCategory());
+        if (category == null) {
             throw new ObjectNotFoundException("Category not found with name: " + productDtoFull.getCategory());
         }
-        product.setCategory(categoryService.findByName(productDtoFull.getCategory()));
-        if (brandService.findByName(productDtoFull.getBrand()) == null) {
-            throw new ObjectNotFoundException("Brand not found with name: " + productDtoFull.getCategory());
+        product.setCategory(category);
+
+        Brand brand = brandService.findByName(productDtoFull.getBrand());
+        if (brand == null) {
+            throw new ObjectNotFoundException("Brand not found with name: " + productDtoFull.getBrand());
         }
-        product.setBrand(product.getBrand());
+        product.setBrand(brand);
     }
 }

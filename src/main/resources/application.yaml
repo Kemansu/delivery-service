@@ -49,6 +49,10 @@ security:
     shopId: ${YOOKASSA_SHOP_ID:1135993}
     secretKey: ${YOOKASSA_SECRET_KEY:test_bZX-_VfdaX0Rr3EPRdubMCzq5hJVdNpZ6e4ZvaVaAgM}
 
+yookassa:
+  # Куда ЮKassa возвращает покупателя после оплаты
+  return-url: ${YOOKASSA_RETURN_URL:https://don-polesie.ru/orders}
+
 import:
   directory: ${IMPORT_DIRECTORY:/data/import}
 

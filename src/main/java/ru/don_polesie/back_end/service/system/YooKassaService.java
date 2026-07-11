@@ -35,6 +35,10 @@ public class YooKassaService {
 
     @Value("${security.YooKassa.secretKey}")
     private String secretKey;
+
+    @Value("${yookassa.return-url}")
+    private String returnUrl;
+
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final List<CidrUtils> allowedCidrs;
@@ -83,7 +87,7 @@ public class YooKassaService {
 
         var confirmation = mapper.createObjectNode();
         confirmation.put("type", "redirect");
-        confirmation.put("return_url", "http://localhost:3000/components");
+        confirmation.put("return_url", returnUrl);
         payload.set("confirmation", confirmation);
 
         var metadata = mapper.createObjectNode();
@@ -272,10 +276,7 @@ public class YooKassaService {
         // Basic Auth
         String auth = Base64.getEncoder().encodeToString((shopId + ":" + secretKey).getBytes());
 
-        // Логируем запрос для отладки
-        System.out.println("URL: " + url);
-        System.out.println("JSON: " + json);
-        System.out.println("Idempotence-Key: " + idempotenceKey);
+        log.debug("Capture payment for order {}: url={}, idempotenceKey={}", order.getId(), url, idempotenceKey);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -292,14 +293,10 @@ public class YooKassaService {
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        // Логируем полный ответ
-        System.out.println("Status Code: " + response.statusCode());
-
-        // Выводим результат
         if (response.statusCode() == 200) {
-            System.out.println("Оплата успешно захвачена: " + response.body());
+            log.info("Оплата по заказу {} успешно захвачена", order.getId());
         } else {
-            System.err.println("Ошибка при захвате оплаты: " + response.statusCode() + " - " + response.body());
+            log.error("Ошибка при захвате оплаты по заказу {}: {} - {}", order.getId(), response.statusCode(), response.body());
             throw new RuntimeException("Ошибка при захвате оплаты: " + response.statusCode() + " - " + response.body());
         }
     }

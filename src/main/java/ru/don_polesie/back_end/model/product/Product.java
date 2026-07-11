@@ -47,10 +47,10 @@ public class Product {
     @DecimalMax(value = "1000000.00", message = "Цена не может превышать 1,000,000.00")
     private BigDecimal price;
 
-    @Column(name = "image_url", nullable = false, length = 500)
+    @Column(name = "image_url", nullable = false, length = 1000)
     @NotBlank(message = "URL изображения обязателен")
     @URL(message = "URL изображения должен быть валидным")
-    @Size(max = 500, message = "URL изображения не может превышать 500 символов")
+    @Size(max = 1000, message = "URL изображения не может превышать 1000 символов")
     private String imageUrl;
 
     // Пищевая ценность на 100г

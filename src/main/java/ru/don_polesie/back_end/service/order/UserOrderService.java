@@ -9,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.don_polesie.back_end.dto.address.response.AddressDtoResponse;
 import ru.don_polesie.back_end.dto.order.response.OrderDtoResponse;
 import ru.don_polesie.back_end.dto.order.response.OrderCreatedDtoResponse;
 import ru.don_polesie.back_end.exceptions.ConflictDataException;
@@ -17,7 +16,6 @@ import ru.don_polesie.back_end.model.basket.Basket;
 import ru.don_polesie.back_end.model.basket.BasketProduct;
 import ru.don_polesie.back_end.model.enums.OrderStatus;
 import ru.don_polesie.back_end.exceptions.ObjectNotFoundException;
-import ru.don_polesie.back_end.mapper.AddressMapper;
 import ru.don_polesie.back_end.mapper.OrderMapper;
 import ru.don_polesie.back_end.model.order.Order;
 import ru.don_polesie.back_end.model.order.OrderProduct;
@@ -46,10 +44,7 @@ public class UserOrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final ProductRepository productRepository;
-    private final OrderProductRepository orderProductRepository;
     private final AddressRepository addressRepository;
-    private final AddressMapper addressMapper;
     private final YooKassaService yooKassaServiceImpl;
     private final PriceService priceService;
     private final BasketRepository basketRepository;
@@ -184,143 +179,12 @@ public class UserOrderService {
     }
 
 
-    @Deprecated
-    @Transactional
-    public OrderCreatedDtoResponse changeQuantityProductFromOrder(Long orderId, Long productId, int quantity) {
-        Order order = getOrderById(orderId);
-        if (order.getStatus() != OrderStatus.PAYING) {
-            throw new RuntimeException("Невозможно редактировать заказ.");
-        }
-        Product product = getProductById(productId);
-        OrderProduct orderProduct = getOrderProduct(orderId, productId);
-        orderProduct.setQuantity(quantity);
-
-        log.info("Changing quantity product {} from order {}", product, order);
-        BigDecimal productPrice = priceService.calculateProductCost(product, quantity);
-        order.setTotalAmount(order.getTotalAmount().subtract(order.getTotalAmount().subtract(productPrice)));
-        order.removeProduct(orderProduct);
-        order.addProduct(orderProduct);
-        log.info("New order price is {}", order.getTotalAmount());
-        orderRepository.save(order);
-        return createPaymentResponse(order);
-    }
-
-    /**
-     * Удаляет товар из заказа и пересчитывает стоимость
-     *
-     * @param orderId идентификатор заказа
-     * @param productId идентификатор товара
-     * @throws ObjectNotFoundException если заказ, товар или связка не найдены
-     */
-    @Deprecated
-    @Transactional
-    public OrderCreatedDtoResponse deleteProductFromOrder(Long orderId, Long productId) {
-        Order order = getOrderById(orderId);
-        if (order.getStatus() != OrderStatus.MONEY_RESERVAITED) {
-            throw new RuntimeException("Невозможно редактировать заказ.");
-        }
-        Product product = getProductById(productId);
-        OrderProduct orderProduct = getOrderProduct(orderId, productId);
-
-        log.info("Deleting product {} from order {}", product, order);
-        BigDecimal productPrice = priceService.calculateProductCost(product, orderProduct.getQuantity());
-        order.setTotalAmount(order.getTotalAmount().subtract(productPrice));
-        order.removeProduct(orderProduct);
-        log.info("New order price is {}", order.getTotalAmount());
-        orderRepository.save(order);
-        return createPaymentResponse(order);
-    }
-
-
     // ========== ПРИВАТНЫЕ ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
     /**
      * Создает объект пагинации
      */
     private Pageable createPageable(Integer pageNumber) {
         return PageRequest.of(pageNumber, PAGE_SIZE, Sort.by("id").descending());
-    }
-
-    /**
-     * Обрабатывает адрес доставки
-     */
-    private Address processAddress(AddressDtoResponse addressDto) {
-        Address address = addressMapper.toEntity(addressDto);
-        return findExistingAddressOrSaveNew(address);
-    }
-
-    /**
-     * Находит существующий адрес или сохраняет новый
-     */
-    private Address findExistingAddressOrSaveNew(Address address) {
-        if (address.getId() == null) {
-            return addressRepository.save(address);
-        }
-        return addressRepository.findById(address.getId())
-                .orElseGet(() -> addressRepository.save(address));
-    }
-
-    /**
-     * Создает новый заказ
-     */
-    private Order createOrder(OrderDtoResponse orderDtoResponse, User user, Address address) {
-        Order order = orderMapper.toOrder(orderDtoResponse);
-        order.setUser(user);
-        order.setAddress(address);
-        order.setStatus(OrderStatus.NEW);
-        order.setTotalAmount(BigDecimal.ZERO);
-        return order;
-    }
-
-    /**
-     * Обрабатывает товары в заказе и рассчитывает общую стоимость
-     */
-    private void processOrderItems(OrderDtoResponse orderDtoResponse, Order order) {
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        List<OrderProduct> orderProducts = new ArrayList<>();
-
-        for (OrderDtoResponse.OrderItemDto itemDto : orderDtoResponse.getItems()) {
-            Product product = productRepository.findById(itemDto.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found: " + itemDto.getProductId()));
-
-            // Создаем связь OrderProduct
-            OrderProduct orderProduct = new OrderProduct();
-
-            // Убедитесь, что OrderProductId создается правильно
-            OrderProductId orderProductId = new OrderProductId();
-            orderProductId.setOrderId(order.getId()); // Теперь order.getId() не null
-            orderProductId.setProductId(product.getId());
-            orderProduct.setId(orderProductId);
-
-            orderProduct.setOrder(order);
-            orderProduct.setProduct(product);
-            orderProduct.setQuantity(itemDto.getQuantity());
-
-            orderProducts.add(orderProduct);
-
-            // Рассчитываем стоимость
-            BigDecimal itemCost = priceService.calculateProductCost(product, itemDto.getQuantity());
-            totalAmount = totalAmount.add(itemCost);
-        }
-
-        // Сохраняем все OrderProducts
-        orderProductRepository.saveAll(orderProducts);
-
-        // Устанавливаем связи и обновляем сумму
-        order.setTotalAmount(totalAmount);
-        order.setStatus(OrderStatus.PAYING);
-    }
-
-    /**
-     * Обрабатывает один товар в заказе
-     */
-    private BigDecimal processOrderItem(OrderDtoResponse.OrderItemDto orderItem, Order order) {
-        Product product = getProductById(orderItem.getProductId());
-        OrderProduct orderProduct = new OrderProduct(order, product, orderItem.getQuantity());
-
-        BigDecimal itemCost = priceService.calculateProductCost(product, orderItem.getQuantity());
-        order.addProduct(orderProduct);
-
-        return itemCost;
     }
 
     /**
@@ -335,31 +199,5 @@ public class UserOrderService {
         } catch (Exception e) {
             throw new RuntimeException("Payment creation failed: " + e.getMessage());
         }
-    }
-
-    /**
-     * Находит заказ по ID
-     */
-    private Order getOrderById(Long orderId) {
-        return orderRepository.findById(orderId)
-                .orElseThrow(() -> new ObjectNotFoundException("Order not found with id: " + orderId));
-    }
-
-    /**
-     * Находит товар по ID
-     */
-    private Product getProductById(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new ObjectNotFoundException("Product not found with id: " + productId));
-    }
-
-    /**
-     * Находит связку товара в заказе
-     */
-    private OrderProduct getOrderProduct(Long orderId, Long productId) {
-        OrderProductId orderProductId = new OrderProductId(orderId, productId);
-        return orderProductRepository.findById(orderProductId)
-                .orElseThrow(() -> new ObjectNotFoundException(
-                        "Order product not found for orderId: " + orderId + " and productId: " + productId));
     }
 }
