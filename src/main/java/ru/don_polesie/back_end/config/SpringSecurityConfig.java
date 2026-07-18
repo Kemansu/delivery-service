@@ -87,6 +87,9 @@ public class SpringSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/user/*").permitAll()
                         .requestMatchers("/api/find/**").permitAll()
                         .requestMatchers("/api/find/*").permitAll()
+                        // Вебхук ЮKassa приходит без авторизации; защита — whitelist IP
+                        // и перепроверка статуса через API ЮKassa в verifyNotification
+                        .requestMatchers(HttpMethod.POST, "/api/payment/notifications").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/staff/**").hasAnyRole("WORKER", "ADMIN")
                         .requestMatchers("/api/**").authenticated()
