@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.don_polesie.back_end.service.system.YooKassaService;
 
 import java.util.Map;
+import java.util.Set;
 
 
 @RestController
@@ -19,12 +20,23 @@ public class PaymentControllerImpl implements PaymentController {
 
     private final YooKassaService yooKassaServiceImpl;
 
+    /** События, которые мы обрабатываем; прочие (refund.* и т.п.) подтверждаем без обработки,
+     *  иначе ЮKassa будет ретраить их сутками. */
+    private static final Set<String> HANDLED_EVENTS = Set.of(
+            "payment.waiting_for_capture", "payment.succeeded", "payment.canceled");
 
     @Override
     public ResponseEntity<?> notifications(
             @RequestBody JsonNode body,
             HttpServletRequest servletRequest) {
         String remoteIp = extractClientIp(servletRequest);
+
+        String event = body.has("event") ? body.get("event").asText() : null;
+        if (event != null && !HANDLED_EVENTS.contains(event)) {
+            log.info("Уведомление ЮKassa {} не обрабатывается, подтверждаем: ip={}", event, remoteIp);
+            return ResponseEntity.ok(Map.of("status", "ignored"));
+        }
+
         if (!yooKassaServiceImpl.verifyNotification(remoteIp, body)) {
             log.warn("Отказано в обработке уведомления: ip={} body={}", remoteIp, body);
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid notification"));

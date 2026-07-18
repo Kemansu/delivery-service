@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.don_polesie.back_end.model.enums.OrderStatus;
 import ru.don_polesie.back_end.exceptions.ObjectNotFoundException;
 import ru.don_polesie.back_end.model.order.Order;
-import ru.don_polesie.back_end.model.order.OrderProduct;
 import ru.don_polesie.back_end.repository.OrderRepository;
 import ru.don_polesie.back_end.utils.CidrUtils;
 
@@ -183,13 +182,30 @@ public class YooKassaService {
                 .findById(orderId)
                 .orElseThrow(() -> new ObjectNotFoundException(""));
 
-        if (notification.get("event").asText().equals("payment.succeeded")) {
-            order.setStatus(OrderStatus.PAID);
-            for (OrderProduct orderProduct : order.getOrderProducts()) {
-                Integer currentAmount = orderProduct.getProduct().getAmount();
-                Integer subtractedAmount = orderProduct.getQuantity();
-                orderProduct.getProduct().setAmount(currentAmount - subtractedAmount);
+        String event = notification.get("event").asText();
+        OrderStatus status = order.getStatus();
+
+        // Остатки товара здесь не трогаем: источник истины по остаткам — 1С
+        // (ProductImportJob перезаписывает amount), а quantity весовых — в граммах.
+        switch (event) {
+            case "payment.waiting_for_capture" -> {
+                if (status == OrderStatus.PAYING) {
+                    order.setStatus(OrderStatus.MONEY_RESERVAITED);
+                }
             }
+            case "payment.succeeded" -> {
+                // капчер уже переводит заказ в READY_FOR_DELIVERY — не откатываем статус назад
+                if (status == OrderStatus.PAYING || status == OrderStatus.MONEY_RESERVAITED) {
+                    order.setStatus(OrderStatus.PAID);
+                }
+            }
+            case "payment.canceled" -> {
+                // отмена/истёкший холд актуальны, только пока деньги не списаны
+                if (status == OrderStatus.PAYING || status == OrderStatus.MONEY_RESERVAITED) {
+                    order.setStatus(OrderStatus.CANCELED);
+                }
+            }
+            default -> log.info("Уведомление ЮKassa с событием {} по заказу {} проигнорировано", event, orderId);
         }
     }
 
@@ -224,8 +240,16 @@ public class YooKassaService {
             String objectId = object.get("id").asText();
             String notifiedStatus = object.get("status").asText();
 
-            // 3. Fetch current from YooKassa
-            JsonNode current = getPayment(Long.valueOf(objectId));
+            // 3. Заказ — из metadata.orderId; object.id (id платежа ЮKassa)
+            //    обязан совпадать с paymentId заказа
+            Long orderId = extractOrderId(notification);
+            Order order = orderRepository.findById(orderId).orElse(null);
+            if (order == null || !objectId.equals(order.getPaymentId())) {
+                return false;
+            }
+
+            // 4. Сверяем заявленный статус со свежим из API ЮKassa
+            JsonNode current = getPayment(orderId);
             if (current == null || !current.has("status")) {
                 return false;
             }
