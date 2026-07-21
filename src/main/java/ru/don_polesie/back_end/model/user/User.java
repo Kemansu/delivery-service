@@ -78,6 +78,11 @@ public class User {
     @Size(max = EMAIL_MAX_LENGTH, message = "Email не может превышать {max} символов")
     private String email;
 
+    // Логин для входа в админ-панель (сотрудники); покупателям не выдаётся.
+    // Уникальность обеспечивает индекс в БД (колонка добавлена вручную 21.07.2026).
+    @Column(name = "login", length = 50)
+    private String login;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",

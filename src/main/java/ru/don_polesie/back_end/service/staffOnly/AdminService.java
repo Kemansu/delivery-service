@@ -11,12 +11,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.don_polesie.back_end.dto.user.UserDto;
+import ru.don_polesie.back_end.exceptions.ConflictDataException;
 import ru.don_polesie.back_end.exceptions.ObjectNotFoundException;
+import ru.don_polesie.back_end.model.basket.Basket;
 import ru.don_polesie.back_end.model.user.User;
 import ru.don_polesie.back_end.model.Role;
 import ru.don_polesie.back_end.repository.RoleRepository;
 import ru.don_polesie.back_end.repository.UserRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +31,7 @@ public class AdminService {
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final String DEFAULT_SORT_FIELD = "id";
     private static final String WORKER_ROLE_NAME = "ROLE_WORKER";
+    private static final String ADMIN_ROLE_NAME = "ROLE_ADMIN";
     private static final String USER_ROLE_NAME = "ROLE_USER";
 
     private final UserRepository userRepository;
@@ -56,7 +60,8 @@ public class AdminService {
 
     public Page<UserDto> findWorkersPage(Integer pageNumber) {
         Pageable pageable = createDefaultPageable(pageNumber);
-        Page<User> workersPage = userRepository.findByRolesName(WORKER_ROLE_NAME, pageable);
+        Page<User> workersPage =
+                userRepository.findDistinctByRolesNameIn(List.of(WORKER_ROLE_NAME, ADMIN_ROLE_NAME), pageable);
         return workersPage.map(this::toDTO);
     }
 
@@ -94,17 +99,59 @@ public class AdminService {
      */
     @Transactional
     public void createUser(UserDto userDtoResponse) {
+        checkUniqueness(userDtoResponse, null);
         User user = createUserFromDTO(userDtoResponse);
+        if (user.getBasket() == null) {
+            Basket basket = new Basket();
+            basket.setUser(user);
+            user.setBasket(basket);
+        }
         userRepository.save(user);
     }
 
     @Transactional
     public void updateUser(UserDto userDtoResponse) {
+        checkUniqueness(userDtoResponse, (long) userDtoResponse.getId());
         User user = createUserFromDTO(userDtoResponse);
         userRepository.save(user);
     }
 
     // ========== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==========
+
+    /**
+     * Проверяет, что телефон/email/логин не заняты другим пользователем —
+     * иначе сохранение падало бы 500-й с SQL-текстом наружу.
+     *
+     * @param dto       данные пользователя
+     * @param excludeId id самого пользователя при обновлении (null при создании)
+     */
+    private void checkUniqueness(UserDto dto, Long excludeId) {
+        if (dto.getPhoneNumber() != null) {
+            userRepository.findByPhoneNumber(dto.getPhoneNumber())
+                    .filter(u -> !u.getId().equals(excludeId))
+                    .ifPresent(u -> {
+                        throw new ConflictDataException(
+                                "Телефон " + dto.getPhoneNumber() + " уже занят пользователем №" + u.getId());
+                    });
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            userRepository.findByEmail(dto.getEmail())
+                    .filter(u -> !u.getId().equals(excludeId))
+                    .ifPresent(u -> {
+                        throw new ConflictDataException(
+                                "Email " + dto.getEmail() + " уже занят пользователем №" + u.getId());
+                    });
+        }
+        if (dto.getLogin() != null && !dto.getLogin().isBlank()) {
+            userRepository.findByLoginIgnoreCase(dto.getLogin().trim())
+                    .filter(u -> !u.getId().equals(excludeId))
+                    .ifPresent(u -> {
+                        throw new ConflictDataException(
+                                "Логин «" + dto.getLogin().trim() + "» уже занят пользователем №" + u.getId());
+                    });
+        }
+    }
+
 
     /**
      * Создает объект пагинации с настройками по умолчанию
@@ -134,6 +181,7 @@ public class AdminService {
                 .map(Role::getName)
                 .collect(Collectors.toSet());
         dto.isActive = user.isActive();
+        dto.login = user.getLogin();
         return dto;
     }
 
@@ -163,6 +211,10 @@ public class AdminService {
         }
         if (userDtoResponse.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(userDtoResponse.getPassword()));
+        }
+        if (userDtoResponse.getLogin() != null) {
+            String login = userDtoResponse.getLogin().trim();
+            user.setLogin(login.isEmpty() ? null : login);
         }
         if (userDtoResponse.getRoles() != null) {
             user.setRoles(

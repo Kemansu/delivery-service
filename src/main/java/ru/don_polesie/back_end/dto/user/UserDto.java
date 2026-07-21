@@ -18,6 +18,7 @@ public class UserDto {
     public String surname;
     public String email;
     public String password;
+    public String login;
     public String phoneNumber;
     public Set<String> roles;
     public boolean isActive;
