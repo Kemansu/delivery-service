@@ -122,22 +122,18 @@ public class YooKassaService {
         }
     }
 
-    public JsonNode getPayment(Long orderId) throws Exception {
-        // 1. Достаем заказ и его paymentId
-        Order order = orderRepository.findById(Long.valueOf(orderId))
-                .orElseThrow(() -> new ObjectNotFoundException("Order not found with id: " + orderId));
-
-        String paymentId = order.getPaymentId();
+    /**
+     * ЧИСТОЕ чтение платежа из ЮKassa по paymentId — без побочных эффектов.
+     * Используется верификацией вебхука (ей нельзя писать в БД) и getPayment.
+     */
+    public JsonNode fetchPaymentJson(String paymentId) throws Exception {
         if (paymentId == null || paymentId.isBlank()) {
-            throw new RuntimeException("PaymentId not found for order " + orderId);
+            throw new RuntimeException("PaymentId is empty");
         }
-
-        // 2. Авторизация
         String credentials = shopId + ":" + secretKey;
         String basicAuth = Base64.getEncoder()
                 .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
 
-        // 3. GET /v3/payments/{paymentId}
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.yookassa.ru/v3/payments/" + paymentId))
                 .header("Authorization", "Basic " + basicAuth)
@@ -146,43 +142,46 @@ public class YooKassaService {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
-            JsonNode json = mapper.readTree(response.body());
-
-            // Обновляем статус заказа по тем же правилам, что и storeNotification:
-            // только вперёд по конвейеру. getPayment зовётся и из verifyNotification
-            // на КАЖДЫЙ вебхук — безусловный setStatus здесь откатывал собранный
-            // заказ (READY_FOR_DELIVERY) обратно в PAID после капчера.
-            String status = json.get("status").asText();
-            OrderStatus current = order.getStatus();
-            if ("succeeded".equals(status)) {
-                if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
-                    order.setStatus(OrderStatus.PAID);
-                    orderRepository.save(order);
-                    log.info("Money for order {} successfully got", orderId);
-                }
-            } else if ("waiting_for_capture".equals(status)) {
-                if (current == OrderStatus.PAYING) {
-                    order.setStatus(OrderStatus.MONEY_RESERVAITED);
-                    orderRepository.save(order);
-                    log.info("User paid order {}", orderId);
-                }
-            } else if ("canceled".equals(status)) {
-                if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
-                    order.setStatus(OrderStatus.CANCELED);
-                    orderRepository.save(order);
-                    log.info("Something went wrong with order {}", orderId);
-                }
-            }
-
-            return json;
-        } else {
-            log.warn("YooKassa getPayment error: {}", response.statusCode() + " " + response.body());
-            throw new RuntimeException(
-                    "YooKassa getPayment error: " + response.statusCode() + " " + response.body()
-            );
+            return mapper.readTree(response.body());
         }
+        log.warn("YooKassa getPayment error: {}", response.statusCode() + " " + response.body());
+        throw new RuntimeException("YooKassa getPayment error: " + response.statusCode());
+    }
+
+    /**
+     * Читает платёж и синхронизирует статус заказа (только вперёд по конвейеру).
+     * Пишет в БД — поэтому вызывается ТОЛЬКО поллером PaymentStatusChecker и
+     * client-facing контроллером, но НЕ верификацией вебхука.
+     */
+    @Transactional
+    public JsonNode getPayment(Long orderId) throws Exception {
+        Order order = orderRepository.findById(Long.valueOf(orderId))
+                .orElseThrow(() -> new ObjectNotFoundException("Order not found with id: " + orderId));
+
+        JsonNode json = fetchPaymentJson(order.getPaymentId());
+        String status = json.get("status").asText();
+        OrderStatus current = order.getStatus();
+        if ("succeeded".equals(status)) {
+            if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
+                order.setStatus(OrderStatus.PAID);
+                orderRepository.save(order);
+                log.info("Money for order {} successfully got", orderId);
+            }
+        } else if ("waiting_for_capture".equals(status)) {
+            if (current == OrderStatus.PAYING) {
+                order.setStatus(OrderStatus.MONEY_RESERVAITED);
+                orderRepository.save(order);
+                log.info("User paid order {}", orderId);
+            }
+        } else if ("canceled".equals(status)) {
+            if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
+                order.setStatus(OrderStatus.CANCELED);
+                orderRepository.save(order);
+                log.info("Something went wrong with order {}", orderId);
+            }
+        }
+        return json;
     }
 
     @Transactional
@@ -258,8 +257,11 @@ public class YooKassaService {
                 return false;
             }
 
-            // 4. Сверяем заявленный статус со свежим из API ЮKassa
-            JsonNode current = getPayment(orderId);
+            // 4. Сверяем заявленный статус со свежим из API ЮKassa.
+            //    ЧИСТОЕ чтение — верификация не должна писать в БД (иначе на
+            //    каждый вебхук статус заказа менялся дважды: здесь и в
+            //    storeNotification). Запись статуса — только в storeNotification.
+            JsonNode current = fetchPaymentJson(order.getPaymentId());
             if (current == null || !current.has("status")) {
                 return false;
             }

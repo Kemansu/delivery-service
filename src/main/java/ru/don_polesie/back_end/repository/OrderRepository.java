@@ -1,9 +1,11 @@
 package ru.don_polesie.back_end.repository;
 
+import jakarta.persistence.LockModeType;
 import lombok.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,6 +26,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @NonNull
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderProducts WHERE o.id = :id")
     Optional<Order> findById(@Param("id") @NonNull Long id);
+
+    // Блокировка строки заказа (SELECT ... FOR UPDATE) на время транзакции —
+    // сериализует одновременные takeOrder/processOrder/markShipped/cancel по
+    // одному заказу, чтобы проверка статуса и запись были атомарны (без гонки
+    // «двое забрали один заказ»).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findByIdForUpdate(@Param("id") Long id);
 
     void deleteById(@NonNull Long integer);
 

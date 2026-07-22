@@ -97,11 +97,8 @@ public class WorkerOrderService {
 
     @Transactional
     public void cancelOrder(@Min(value = 1) Long id, User user) {
-        Optional<Order> orderOptional = orderRepository.findById(id);
-        if (!orderOptional.isPresent()) {
-            throw new IllegalArgumentException("Заказа с таким id не существует");
-        }
-        Order order = orderOptional.get();
+        // Блокирующая загрузка — как и остальные мутирующие операции
+        Order order = getOrderById(id);
         if (!order.getStatus().equals(OrderStatus.MONEY_RESERVAITED)) {
             throw new IllegalArgumentException("Заказа еще не прошел оплату, его невозможно отменить");
         }
@@ -151,6 +148,7 @@ public class WorkerOrderService {
         orderRepository.save(order);
     }
 
+    @Transactional
     public void deleteProductFromOrder(Long orderId, Long productId) {
         Order order = getOrderById(orderId);
         if (!OrderStatus.MONEY_RESERVAITED.equals(order.getStatus())) {
@@ -214,8 +212,11 @@ public class WorkerOrderService {
      * @return найденный заказ
      * @throws ObjectNotFoundException если заказ не найден
      */
+    // Загрузка заказа С БЛОКИРОВКОЙ строки — все вызывающие методы мутируют
+    // статус в транзакции, поэтому lock сериализует параллельные операции по
+    // одному заказу (устраняет гонку check-then-act).
     private Order getOrderById(Long id) {
-        return orderRepository.findById(id)
+        return orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ObjectNotFoundException("Order not found with id: " + id));
     }
 
