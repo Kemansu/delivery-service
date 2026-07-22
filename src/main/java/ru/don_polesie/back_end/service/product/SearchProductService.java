@@ -130,7 +130,8 @@ public class SearchProductService {
      * @return страница с найденными товарами
      */
     public Page<ProductDtoFull> findProductByQuery(String query, @Min(value = 0) Integer pageNumber) {
-        Pageable pageable = createDefaultPageable(pageNumber);
+        // Без Sort: порядок задаёт сам fuzzy-запрос (подстрока → похожесть).
+        Pageable pageable = PageRequest.of(pageNumber, PAGE_SIZE);
         return productRepository.searchProductsByQuery(query, pageable)
                 .map(productMapper::toProductDtoRR);
     }

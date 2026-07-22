@@ -41,10 +41,17 @@ public class DataInitializer implements CommandLineRunner {
     private final OrderProductRepository orderProductRepository;
     private final AddressRepository addressRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     @Override
     @Transactional
     public void run(String... args) {
         log.info("Initializing data...");
+
+        // Расширение pg_trgm нужно для поиска товаров с устойчивостью к опечаткам
+        // (word_similarity). Создаём идемпотентно — самовосстановление на свежей БД.
+        entityManager.createNativeQuery("CREATE EXTENSION IF NOT EXISTS pg_trgm").executeUpdate();
         Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                 .orElseGet(() -> roleRepository.save(new Role("ROLE_ADMIN")));
 

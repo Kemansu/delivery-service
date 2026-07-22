@@ -44,9 +44,25 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     );
 
 
-    @Query("SELECT p FROM Product p WHERE " +
-            "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))" +
-            "AND p.active = true")
+    // Поиск по названию с устойчивостью к опечаткам (pg_trgm).
+    // Совпадает, если:
+    //   1) название содержит запрос как подстроку (точный/частичный ввод), ИЛИ
+    //   2) триграммное word_similarity запроса к названию > 0.4 — ловит опечатки
+    //      («калбаса»→«колбаса»: ~0.50; шум даёт ≤0.38, порог 0.4 их отсекает).
+    // Порядок: сначала подстрочные совпадения, затем по убыванию похожести.
+    // Native-запрос: word_similarity — функция pg_trgm, в JPQL её нет.
+    @Query(value =
+            "SELECT * FROM products p WHERE p.active = true AND (" +
+            "  lower(p.name) LIKE ('%' || lower(:query) || '%') " +
+            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4" +
+            ") ORDER BY " +
+            "  (lower(p.name) LIKE ('%' || lower(:query) || '%')) DESC, " +
+            "  word_similarity(lower(:query), lower(p.name)) DESC, p.id DESC",
+            countQuery =
+            "SELECT count(*) FROM products p WHERE p.active = true AND (" +
+            "  lower(p.name) LIKE ('%' || lower(:query) || '%') " +
+            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4)",
+            nativeQuery = true)
     Page<Product> searchProductsByQuery(@Param("query") String query, Pageable pageable);
 
     Optional<Product> findByBrandAndName(Brand brand, String name);
