@@ -19,8 +19,6 @@ public class JWTGeneratorService {
 
 
     public JwtAuthResponse generateJWT(String number, String password) {
-        log.info("JWT is generating for user: {}", number);
-
         var jwtResponse = new JwtAuthResponse();
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -30,17 +28,17 @@ public class JWTGeneratorService {
         // Получение данных пользователя после успешной аутентификации
         var user = userServiceImpl.getByPhoneNumber(number);
 
-        // Формирование ответа с токенами
+        // Формирование ответа с токенами. Пароль в ответ НЕ кладём — он не нужен
+        // фронту и не должен гулять по сети/логам.
         jwtResponse.setId(user.getId());
         jwtResponse.setPhoneNumber(number);
-        jwtResponse.setPassword(password);
         jwtResponse.setAccessToken(jwtTokenProvider.createAccessToken(
                 user.getId(), number, user.getRoles())
         );
         jwtResponse.setRefreshToken(jwtTokenProvider.createRefreshToken(
                 user.getId(), number)
         );
-        log.info("JWT generated for user: {}", number);
+        log.info("JWT generated for user id {}", user.getId());
         return jwtResponse;
     }
 }

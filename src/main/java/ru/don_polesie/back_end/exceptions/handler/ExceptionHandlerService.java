@@ -64,6 +64,15 @@ public class ExceptionHandlerService {
     }
 
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<Information> handleTooManyRequestsException(TooManyRequestsException ex, WebRequest request) {
+        log.warn("Too many requests - URL: {}, Message: {}", request.getDescription(false), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(
+                new Information(ex.getMessage(), "Too many login attempts")
+        );
+    }
+
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Information> handleException(Exception ex, WebRequest request) {
         log.error("Internal error - URL: {}, Error: {}", request.getDescription(false), ex.getMessage(), ex);
