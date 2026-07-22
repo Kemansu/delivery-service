@@ -150,20 +150,30 @@ public class YooKassaService {
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             JsonNode json = mapper.readTree(response.body());
 
-            // При желании можно обновить статус заказа
+            // Обновляем статус заказа по тем же правилам, что и storeNotification:
+            // только вперёд по конвейеру. getPayment зовётся и из verifyNotification
+            // на КАЖДЫЙ вебхук — безусловный setStatus здесь откатывал собранный
+            // заказ (READY_FOR_DELIVERY) обратно в PAID после капчера.
             String status = json.get("status").asText();
+            OrderStatus current = order.getStatus();
             if ("succeeded".equals(status)) {
-                order.setStatus(OrderStatus.PAID);
-                orderRepository.save(order);
-                log.info("Money for order {} successfully got", orderId);
-            } else if ("waiting_for_capture".equals(status)){
-                order.setStatus(OrderStatus.MONEY_RESERVAITED);
-                orderRepository.save(order);
-                log.info("User paid order {}", orderId);
+                if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
+                    order.setStatus(OrderStatus.PAID);
+                    orderRepository.save(order);
+                    log.info("Money for order {} successfully got", orderId);
+                }
+            } else if ("waiting_for_capture".equals(status)) {
+                if (current == OrderStatus.PAYING) {
+                    order.setStatus(OrderStatus.MONEY_RESERVAITED);
+                    orderRepository.save(order);
+                    log.info("User paid order {}", orderId);
+                }
             } else if ("canceled".equals(status)) {
-                order.setStatus(OrderStatus.CANCELED);
-                orderRepository.save(order);
-                log.info("Something went wrong with order {}", orderId);
+                if (current == OrderStatus.PAYING || current == OrderStatus.MONEY_RESERVAITED) {
+                    order.setStatus(OrderStatus.CANCELED);
+                    orderRepository.save(order);
+                    log.info("Something went wrong with order {}", orderId);
+                }
             }
 
             return json;
@@ -282,6 +292,35 @@ public class YooKassaService {
         } catch (NumberFormatException e) {
             throw new ObjectNotFoundException("");
         }
+    }
+
+    /**
+     * Деньги по платежу уже списаны? Чистая проверка статуса в ЮKassa без
+     * побочных эффектов — нужна перед капчером: повторный capture по
+     * succeeded-платежу возвращает ошибку.
+     */
+    public boolean isCaptured(Order order) throws InterruptedException, IOException {
+        String paymentId = order.getPaymentId();
+        if (paymentId == null || paymentId.isBlank()) {
+            return false;
+        }
+
+        String auth = Base64.getEncoder().encodeToString((shopId + ":" + secretKey).getBytes());
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.yookassa.ru/v3/payments/" + paymentId))
+                .header("Authorization", "Basic " + auth)
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            JsonNode json = mapper.readTree(response.body());
+            return "succeeded".equals(json.get("status").asText());
+        }
+        log.warn("YooKassa isCaptured: не удалось проверить платёж заказа {}: {} {}",
+                order.getId(), response.statusCode(), response.body());
+        return false;
     }
 
     public void getMoney(Order order) throws InterruptedException, IOException {

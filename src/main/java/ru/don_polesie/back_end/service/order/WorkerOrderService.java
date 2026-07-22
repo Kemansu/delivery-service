@@ -2,6 +2,7 @@ package ru.don_polesie.back_end.service.order;
 
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -138,7 +140,10 @@ public class WorkerOrderService {
         }
 
         Order order = getOrderById(id);
-        if (!OrderStatus.MONEY_RESERVAITED.equals(order.getStatus())) {
+        // PAID тоже допустим: платёж мог быть списан до сборки (капчер по вебхуку
+        // или способ оплаты без холда) — иначе такой заказ зависал бы навсегда
+        if (!OrderStatus.MONEY_RESERVAITED.equals(order.getStatus())
+                && !OrderStatus.PAID.equals(order.getStatus())) {
             throw new IllegalArgumentException("Деньги не зарезервированы, заказ нельзя забрать для сборки");
         }
         order.setEmployee(user);
@@ -293,7 +298,13 @@ public class WorkerOrderService {
     private void updateOrderPayment(Order order, BigDecimal newTotal) {
         order.setTotalAmount(newTotal);
         try {
-            yooKassaService.getMoney(order);
+            // Если деньги уже списаны (заказ пришёл в сборку из PAID) — повторный
+            // капчер вернул бы ошибку и заказ ушёл бы в ERROR_ON_PAYMENT
+            if (yooKassaService.isCaptured(order)) {
+                log.info("Оплата по заказу {} уже списана — капчер пропущен", order.getId());
+            } else {
+                yooKassaService.getMoney(order);
+            }
             order.setStatus(OrderStatus.READY_FOR_DELIVERY);
         } catch (Exception e) {
             order.setStatus(OrderStatus.ERROR_ON_PAYMENT);
