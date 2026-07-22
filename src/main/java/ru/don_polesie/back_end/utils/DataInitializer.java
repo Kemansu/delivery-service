@@ -2,6 +2,7 @@ package ru.don_polesie.back_end.utils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,12 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+
+    // Создание дефолтных аккаунтов с известными паролями — только по явному флагу
+    // (для локальной разработки). На проде флаг НЕ задан → сид не выполняется,
+    // общеизвестные креды admin123/user123 не заводятся и не логируются.
+    @Value("${security.seed-default-users:false}")
+    private boolean seedDefaultUsers;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
@@ -52,48 +59,43 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println(role.getName());
         });
 
-        User admin = new User();
-        if (userRepository.findByPhoneNumber("79919916871").isEmpty()) {
+        // Дефолтные аккаунты с известными паролями заводятся ТОЛЬКО в dev
+        // (security.seed-default-users=true). На проде блок не выполняется.
+        if (seedDefaultUsers) {
+            User admin = new User();
+            if (userRepository.findByPhoneNumber("79919916871").isEmpty()) {
+                admin.setName("Денис");
+                admin.setSurname("Погосов");
+                admin.setPhoneNumber("79919916871");
+                admin.setPassword(passwordEncoder.encode("admin123"));
+                admin.getRoles().add(adminRole);
+                admin.getRoles().add(workerRole);
+                admin.getRoles().add(userRole);
+                userRepository.save(admin);
+            }
 
-            admin.setName("Денис");
-            admin.setSurname("Погосов");
-            admin.setPhoneNumber("79919916871");
-            admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.getRoles().add(adminRole);
-            admin.getRoles().add(workerRole);
-            admin.getRoles().add(userRole);
-            userRepository.save(admin);
+            User user = new User();
+            Address address = new Address();
+            if (userRepository.findByPhoneNumber("79889995000").isEmpty()) {
+                user.setName("Виктор");
+                user.setSurname("Николаенко");
+                user.setPhoneNumber("79889995000");
+                user.setEmail("viktor.nikolaenko.2005@gmail.com");
+                user.setPassword(passwordEncoder.encode("user123"));
+                user.getRoles().add(userRole);
+                userRepository.save(user);
+
+                address.setActive(true);
+                address.setCity("Ростов-на-Дону");
+                address.setStreet("Сержантова");
+                address.setFloor(21);
+                address.setHouseNumber("9/27");
+                address.setApartmentNumber(190);
+                address.setUser(user);
+                addressRepository.save(address);
+            }
+            log.info("Dev seed users created (security.seed-default-users=true)");
         }
-
-        log.info("Admin user: 79919916871 / admin123");
-
-        // if (!categoryRepository.existsCategoryByName("Сыры")) addData();
-
-        User user = new User();
-        Address address = new Address();
-        if (userRepository.findByPhoneNumber("79889995000").isEmpty()) {
-            user.setName("Виктор");
-            user.setSurname("Николаенко");
-            user.setPhoneNumber("79889995000");
-            user.setEmail("viktor.nikolaenko.2005@gmail.com");
-            user.setPassword(passwordEncoder.encode("user123"));
-            user.getRoles().add(userRole);
-            userRepository.save(user);
-
-            address.setActive(true);
-            address.setCity("Ростов-на-Дону");
-            address.setStreet("Сержантова");
-            address.setFloor(21);
-            address.setHouseNumber("9/27");
-            address.setApartmentNumber(190);
-            address.setUser(user);
-            addressRepository.save(address);
-
-            // user.setAddresses(addressRepository.findAll());
-            // userRepository.save(user);
-        }
-
-        log.info("Default user: 79889995000 / user123");
 
         /*
         if (orderRepository.findById(1L).isEmpty()){

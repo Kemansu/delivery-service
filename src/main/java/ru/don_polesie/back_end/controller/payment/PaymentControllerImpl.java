@@ -53,9 +53,17 @@ public class PaymentControllerImpl implements PaymentController {
     }
 
     private String extractClientIp(HttpServletRequest request) {
+        // X-Real-IP ставит nginx ($remote_addr) и перезаписывает клиентский —
+        // подделать нельзя. Клиентский X-Forwarded-For (первый элемент) спуфится
+        // и обходил бы IP-whitelist вебхука ЮKassa, поэтому его не берём.
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+            String[] parts = xff.split(",");
+            return parts[parts.length - 1].trim();
         }
         return request.getRemoteAddr();
     }

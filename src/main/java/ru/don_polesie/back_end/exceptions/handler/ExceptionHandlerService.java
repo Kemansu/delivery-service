@@ -75,9 +75,10 @@ public class ExceptionHandlerService {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Information> handleException(Exception ex, WebRequest request) {
+        // Детали (в т.ч. тексты интеграций ЮKassa/SQL) — только в лог, не клиенту
         log.error("Internal error - URL: {}, Error: {}", request.getDescription(false), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                new Information("Возникла внутренняя ошибка сервера.", ex.getMessage())
+                new Information("Возникла внутренняя ошибка сервера.", "Internal server error")
         );
     }
 }

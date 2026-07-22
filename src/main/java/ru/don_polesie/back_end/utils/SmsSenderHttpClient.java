@@ -42,8 +42,8 @@ public class SmsSenderHttpClient {
 
             String authHeader = "Bearer " + token;
 
-            log.info("SMS request sending - PhoneNumber: {}, Text: {}",
-                    recipientNumber, text);
+            // Текст НЕ логируем: в нём код входа. Номер маскируем.
+            log.info("SMS request sending to {}", maskPhone(recipientNumber));
 
 
             HttpRequest request = HttpRequest.newBuilder()
@@ -56,11 +56,11 @@ public class SmsSenderHttpClient {
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            log.info("SMS response body - Body: {}",
-                    response.body());
+            // Логируем только статус, не тело (в ответе бывает эхо текста/номера)
+            log.info("SMS response status: {}", response.statusCode());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("API returned error: " + response.body());
+                throw new RuntimeException("SMS API returned error status " + response.statusCode());
             }
 
         } catch (Exception e) {
@@ -68,4 +68,9 @@ public class SmsSenderHttpClient {
         }
     }
 
+    /** Маскирует номер для логов: 79991234567 → 7999***4567 */
+    private static String maskPhone(String phone) {
+        if (phone == null || phone.length() < 8) return "***";
+        return phone.substring(0, 4) + "***" + phone.substring(phone.length() - 4);
+    }
 }
