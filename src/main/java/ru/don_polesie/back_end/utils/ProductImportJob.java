@@ -143,6 +143,8 @@ public class ProductImportJob {
         product.setStorageTemperatureMin(Integer.valueOf(Objects.requireNonNull(getTagValue("storageTemperatureMin", element))));
         product.setStorageTemperatureMax(Integer.valueOf(Objects.requireNonNull(getTagValue("storageTemperatureMax", element))));
         product.setIsWeighted(Boolean.valueOf(getTagValue("isWeighted", element)));
+        // Галочка «Новинка» из 1С: нет тега или любое значение кроме "true" → false
+        product.setIsNovelty(Boolean.valueOf(getTagValue("isNovelty", element)));
         product.setCountryOfOrigin(getTagValue("countryOfOrigin", element));
         product.setComposition(getTagValue("composition", element));
         product.setDescription(getTagValue("description", element));

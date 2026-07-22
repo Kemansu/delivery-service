@@ -157,6 +157,8 @@ public class ManageProductService {
         product.setDescription(productDtoFull.getDescription());
         product.setSale(productDtoFull.getSale());
         product.setIsWeighted(productDtoFull.getIsWeighted());
+        // Boolean.TRUE.equals: старый фронт может не прислать поле — тогда false, а не null
+        product.setIsNovelty(Boolean.TRUE.equals(productDtoFull.getIsNovelty()));
 
         product.setShelfLife(productDtoFull.getShelfLife());
 

@@ -65,6 +65,8 @@ public class ProductDtoFull {
 
     private Boolean isWeighted;
 
+    private Boolean isNovelty;
+
     @NotNull(message = "Состав товара обязателно")
     private String composition;
 

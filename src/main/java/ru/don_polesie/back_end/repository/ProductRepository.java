@@ -61,5 +61,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findPByCategoryIdAndActiveTrue(Long category_id, Pageable pageable);
 
+    // Для категории «Новинки»: товары с галочкой isNovelty из 1С плюс те, кому
+    // категорию «Новинки» назначили вручную в админке
+    @Query("select p from Product p where p.active = true and (p.isNovelty = true or p.category.id = :categoryId)")
+    Page<Product> findNoveltyOrCategoryActive(@Param("categoryId") Long categoryId, Pageable pageable);
+
     Page<Product> findByBrandIdAndActiveTrue(Long id, Pageable pageable);
 }

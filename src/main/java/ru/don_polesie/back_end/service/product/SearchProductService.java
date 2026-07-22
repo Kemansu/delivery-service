@@ -35,6 +35,10 @@ public class SearchProductService {
     @Value("${utils.page-size}")
     private int PAGE_SIZE;
 
+    /** id категории «Новинки» (по договорённости всегда 1, см. дефолтный набор категорий) */
+    @Value("${utils.novelty-category-id:1}")
+    private Long NOVELTY_CATEGORY_ID;
+
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final OrderProductRepository orderProductRepository;
@@ -69,7 +73,10 @@ public class SearchProductService {
 
     public Page<ProductDtoFull> findProductsByCategory(@Min(value = 0) Integer pageNumber, Long id) {
         Pageable pageable = createDefaultPageable(pageNumber);
-        Page<Product> productsPage = productRepository.findPByCategoryIdAndActiveTrue(id, pageable);
+        // «Новинки» (id 1) собираются по галочке isNovelty из 1С + вручную назначенным
+        Page<Product> productsPage = NOVELTY_CATEGORY_ID.equals(id)
+                ? productRepository.findNoveltyOrCategoryActive(id, pageable)
+                : productRepository.findPByCategoryIdAndActiveTrue(id, pageable);
         if (!productsPage.hasContent()) {
             throw new ObjectNotFoundException("Продуктов с такой категорией не найдено");
         }

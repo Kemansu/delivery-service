@@ -121,6 +121,11 @@ public class Product {
     @NotNull(message = "Признак весового товара обязателен")
     private Boolean isWeighted;
 
+    // Галочка «Новинка» из 1С (тег <isNovelty> в products.xml). Колонка nullable,
+    // чтобы ddl-auto=update добавил её на непустой таблице; null читаем как false
+    @Column(name = "is_novelty", columnDefinition = "boolean default false")
+    private Boolean isNovelty = false;
+
     @Column(name = "country_of_origin", nullable = false, length = 100)
     @NotBlank(message = "Страна происхождения обязательна")
     @Size(max = 100, message = "Страна происхождения не может превышать 100 символов")
