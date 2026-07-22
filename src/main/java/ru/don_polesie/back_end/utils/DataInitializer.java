@@ -49,9 +49,11 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Initializing data...");
 
-        // Расширение pg_trgm нужно для поиска товаров с устойчивостью к опечаткам
-        // (word_similarity). Создаём идемпотентно — самовосстановление на свежей БД.
+        // Расширения для поиска товаров с устойчивостью к опечаткам:
+        // pg_trgm — триграммное word_similarity, fuzzystrmatch — levenshtein.
+        // Создаём идемпотентно — самовосстановление на свежей БД.
         entityManager.createNativeQuery("CREATE EXTENSION IF NOT EXISTS pg_trgm").executeUpdate();
+        entityManager.createNativeQuery("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch").executeUpdate();
         Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                 .orElseGet(() -> roleRepository.save(new Role("ROLE_ADMIN")));
 

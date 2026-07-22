@@ -44,24 +44,39 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     );
 
 
-    // Поиск по названию с устойчивостью к опечаткам (pg_trgm).
-    // Совпадает, если:
-    //   1) название содержит запрос как подстроку (точный/частичный ввод), ИЛИ
-    //   2) триграммное word_similarity запроса к названию > 0.4 — ловит опечатки
-    //      («калбаса»→«колбаса»: ~0.50; шум даёт ≤0.38, порог 0.4 их отсекает).
-    // Порядок: сначала подстрочные совпадения, затем по убыванию похожести.
-    // Native-запрос: word_similarity — функция pg_trgm, в JPQL её нет.
+    // Поиск по названию с устойчивостью к опечаткам. Товар совпадает, если:
+    //   1) название содержит запрос подстрокой (точный/частичный ввод), ИЛИ
+    //   2) триграммное word_similarity > 0.4 (ловит перестановки/лишние буквы:
+    //      «калбаса»→«колбаса» ~0.50), ИЛИ
+    //   3) какое-то слово названия в пределах Левенштейна ≤2 от запроса — ловит
+    //      замены гласных, которые триграммы упускают («тварог»→«творог» =1,
+    //      «малако»→«молоко» =2). Окно длины слова отсекает совсем чужие слова.
+    // Порядок: подстрочные первыми, затем по большему из триграммной/левенштейн-
+    // похожести. Native: word_similarity/levenshtein — из pg_trgm/fuzzystrmatch.
     @Query(value =
             "SELECT * FROM products p WHERE p.active = true AND (" +
             "  lower(p.name) LIKE ('%' || lower(:query) || '%') " +
-            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4" +
+            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4 " +
+            "  OR (SELECT min(levenshtein(w, lower(:query))) " +
+            "      FROM regexp_split_to_table(lower(p.name), '[^а-яёa-z0-9]+') AS w " +
+            "      WHERE length(w) BETWEEN length(:query) - 2 AND length(:query) + 3) <= 2" +
             ") ORDER BY " +
             "  (lower(p.name) LIKE ('%' || lower(:query) || '%')) DESC, " +
-            "  word_similarity(lower(:query), lower(p.name)) DESC, p.id DESC",
+            "  GREATEST(word_similarity(lower(:query), lower(p.name)), " +
+            "    CASE WHEN (SELECT min(levenshtein(w, lower(:query))) " +
+            "               FROM regexp_split_to_table(lower(p.name), '[^а-яёa-z0-9]+') AS w " +
+            "               WHERE length(w) BETWEEN length(:query) - 2 AND length(:query) + 3) IS NULL " +
+            "      THEN 0 ELSE 1.0 - (SELECT min(levenshtein(w, lower(:query))) " +
+            "               FROM regexp_split_to_table(lower(p.name), '[^а-яёa-z0-9]+') AS w " +
+            "               WHERE length(w) BETWEEN length(:query) - 2 AND length(:query) + 3)::float " +
+            "      / GREATEST(length(:query), 1) END) DESC, p.id DESC",
             countQuery =
             "SELECT count(*) FROM products p WHERE p.active = true AND (" +
             "  lower(p.name) LIKE ('%' || lower(:query) || '%') " +
-            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4)",
+            "  OR word_similarity(lower(:query), lower(p.name)) > 0.4 " +
+            "  OR (SELECT min(levenshtein(w, lower(:query))) " +
+            "      FROM regexp_split_to_table(lower(p.name), '[^а-яёa-z0-9]+') AS w " +
+            "      WHERE length(w) BETWEEN length(:query) - 2 AND length(:query) + 3) <= 2)",
             nativeQuery = true)
     Page<Product> searchProductsByQuery(@Param("query") String query, Pageable pageable);
 
